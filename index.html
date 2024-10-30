@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <div>
+      <label for="pictures">Pictures</label>
+      <input name="pictures" type="file" accept="image/*" />
+      <p></p>
+    </div>
+    <section></section>
+  </body>
+  <script>
+    const p = document.querySelector("p");
+    const section = document.querySelector("section");
+    const state = {
+      opfsRoot: null,
+      picturesDir: null,
+    };
+
+    async function listAllImages() {
+      while (section.querySelector("img")) {
+        section.removeChild(section.querySelector("img"));
+      }
+      for await (const [, entry] of state.picturesDir.entries()) {
+        const file = await entry.getFile();
+        const imgURL = URL.createObjectURL(file);
+        const img = document.createElement("img");
+        img.src = imgURL;
+        img.width = 200;
+        img.style.display = "block";
+        section.appendChild(img);
+      }
+    }
+
+    navigator.storage.getDirectory().then((root) => {
+      state.opfsRoot = root;
+      root
+        .getDirectoryHandle("pictures", {
+          create: true,
+        })
+        .then((dir) => {
+          state.picturesDir = dir;
+        })
+        .then(listAllImages);
+    });
+    document.querySelector("input").addEventListener("input", async (e) => {
+      p.innerText = "";
+      const file = e.target.files[0];
+      if (file && state.opfsRoot && state.picturesDir) {
+        const fileHandle = await state.picturesDir.getFileHandle(file.name, {
+          create: true,
+        });
+        const writable = await fileHandle.createWritable();
+        await writable.write(file);
+        await writable.close();
+        p.innerText = "File saved";
+        listAllImages();
+      }
+    });
+  </script>
+</html>
